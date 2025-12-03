@@ -66,6 +66,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ReadingsScreen(),
           ),
           GoRoute(
+            path: '/hymns',
+            builder: (context, state) => const HymnsScreen(),
+          ),
+          GoRoute(
+            path: '/mass-responses',
+            builder: (context, state) => const MassResponsesScreen(),
+          ),
+          GoRoute(
             path: '/prayers',
             builder: (context, state) => const PrayersScreen(),
           ),
@@ -84,6 +92,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/local-church-id-request',
+            builder: (context, state) => const LocalChurchIdRequestScreen(),
           ),
           GoRoute(
             path: '/subscription/paywall',
