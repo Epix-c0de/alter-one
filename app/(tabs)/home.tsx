@@ -1,207 +1,172 @@
-import { Image } from 'expo-image';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  TextInput,
   RefreshControl,
   Alert,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, MessageCircle, Bookmark, Share2, Search, Bell } from 'lucide-react-native';
-
+import { Search, Bell, Plus, Bookmark } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { mockFeedItems } from '@/mocks/data';
-import type { FeedItem } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import LocalChurchIdRequestModal from '@/components/LocalChurchIdRequestModal';
-import { useLocation } from '@/context/LocationContext';
-import { findParishByLocation } from '@/lib/geofencing';
-import { Database } from '@/types/database';
+import type { FeedPost, FeedTier } from '@/types/feed.types';
+import { fetchLocalFeed, fetchArchdioceseFeed, fetchNationalFeed } from '@/lib/feed';
+import FeedPostCard from '@/components/feed/FeedPostCard';
+import FeedCommentSection from '@/components/feed/FeedCommentSection';
+import { Link } from 'expo-router';
 
-type Parish = Database['public']['Tables']['parishes']['Row'];
-
-// Mock parishes data (replace with actual data from Supabase)
-const MOCK_PARISHES: Parish[] = [
-  {
-    id: '1',
-    archdiocese_id: '1',
-    parish_name: 'Holy Family Basilica',
-    latitude: -1.286389,
-    longitude: 36.817223,
-    radius_meters: 1000,
-    polygon_coordinates: null,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    archdiocese_id: '1',
-    parish_name: 'All Saints Cathedral',
-    latitude: -1.286667,
-    longitude: 36.818333,
-    radius_meters: 1500,
-    polygon_coordinates: null,
-    created_at: new Date().toISOString(),
-  },
-];
-
-function formatTimeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function FeedCard({ item }: { item: FeedItem }) {
-  const [liked, setLiked] = useState(item.liked);
-  const [saved, setSaved] = useState(item.saved);
-  const [likes, setLikes] = useState(item.likes);
-
-  const handleLike = () => {
-    setLiked(!liked);
-    setLikes(liked ? likes - 1 : likes + 1);
-  };
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Image
-          source={{ uri: item.authorPhotoUrl || 'https://i.pravatar.cc/150?img=1' }}
-          style={styles.avatar}
-        />
-        <View style={styles.cardHeaderText}>
-          <Text style={styles.authorName}>{item.authorName}</Text>
-          <Text style={styles.timestamp}>{formatTimeAgo(item.createdAt)}</Text>
-        </View>
-        {item.pinned && (
-          <View style={styles.pinnedBadge}>
-            <Text style={styles.pinnedText}>Pinned</Text>
-          </View>
-        )}
-      </View>
-
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <Text style={styles.cardContent} numberOfLines={3}>
-        {item.content}
-      </Text>
-
-      {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />}
-
-      <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-          <Heart
-            color={liked ? Colors.light.error : Colors.light.textSecondary}
-            size={20}
-            fill={liked ? Colors.light.error : 'transparent'}
-          />
-          <Text style={[styles.actionText, liked && styles.actionTextActive]}>{likes}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <MessageCircle color={Colors.light.textSecondary} size={20} />
-          <Text style={styles.actionText}>{item.comments}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => setSaved(!saved)}>
-          <Bookmark
-            color={saved ? Colors.light.primary : Colors.light.textSecondary}
-            size={20}
-            fill={saved ? Colors.light.primary : 'transparent'}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Share2 color={Colors.light.textSecondary} size={20} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
+type TabType = 'local' | 'archdiocese' | 'national';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
-  const { location, errorMsg, requestPermission } = useLocation();
+  const { user, isGuest } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabType>('local');
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchVisible, setSearchVisible] = useState(false);
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [parishes, setParishes] = useState<Parish[]>(MOCK_PARISHES);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [parishName, setParishName] = useState<string>('');
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState(false);
+
+  const LIMIT = 10;
 
   useEffect(() => {
-    const checkLocalChurchId = async () => {
-      if (!user) return;
+    loadUserParish();
+    loadFeed(true);
+  }, [activeTab, user]);
 
-      const { data, error } = await supabase
-        .from('users')
-        .select('local_church_id, parish_id')
-        .eq('id', user.id)
-        .single();
+  const loadUserParish = async () => {
+    if (!user) return;
 
-      if (error) {
-        console.error('Error fetching user data:', error.message);
-        return;
-      }
+    const { data, error } = await supabase
+      .from('users')
+      .select('parish_id, parishes(parish_name)')
+      .eq('id', user.id)
+      .single();
 
-      if (!data?.local_church_id) {
-        setModalVisible(true);
-      }
+    if (data && (data as any).parishes) {
+      setParishName((data as any).parishes.parish_name);
+    }
+  };
 
-      if (!data?.parish_id) {
-        requestPermission();
-      }
-    };
+  const loadFeed = async (reset: boolean = false) => {
+    if (!user) return;
 
-    checkLocalChurchId();
-  }, [user, requestPermission]);
-
-  useEffect(() => {
-    if (location && user) {
-      const foundParish = findParishByLocation(location, parishes);
-      if (foundParish) {
-        supabase
-          .from('users')
-          .update({ parish_id: foundParish.id })
-          .eq('id', user.id)
-          .then(({ error }) => {
-            if (error) {
-              Alert.alert('Error', 'Could not update your parish.');
-            } else {
-              Alert.alert('Parish Assigned', `You have been assigned to ${foundParish.parish_name}.`);
-            }
-          });
-      }
+    if (reset) {
+      setLoading(true);
+      setOffset(0);
+      setHasMore(true);
+    } else {
+      setLoadingMore(true);
     }
 
-    if (errorMsg) {
-      Alert.alert('Location Error', errorMsg);
+    const currentOffset = reset ? 0 : offset;
+
+    let result;
+    if (activeTab === 'local') {
+      result = await fetchLocalFeed(user.id, LIMIT, currentOffset);
+    } else if (activeTab === 'archdiocese') {
+      result = await fetchArchdioceseFeed(user.id, LIMIT, currentOffset);
+    } else {
+      result = await fetchNationalFeed(user.id, LIMIT, currentOffset);
     }
-  }, [location, errorMsg, user, parishes]);
+
+    if (result.error) {
+      Alert.alert('Error', 'Failed to load feed');
+    } else {
+      const newPosts = result.data || [];
+      setPosts(reset ? newPosts : [...posts, ...newPosts]);
+      setHasMore(newPosts.length === LIMIT);
+      setOffset(currentOffset + newPosts.length);
+    }
+
+    setLoading(false);
+    setLoadingMore(false);
+    setRefreshing(false);
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    loadFeed(true);
   };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      loadFeed(false);
+    }
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setPosts([]);
+  };
+
+  const handleCommentPress = (postId: string) => {
+    setSelectedPostId(postId);
+    setShowComments(true);
+  };
+
+  const handleCloseComments = () => {
+    setShowComments(false);
+    setSelectedPostId(null);
+    // Refresh to update comment counts
+    loadFeed(true);
+  };
+
+  const renderPost = ({ item }: { item: FeedPost }) => (
+    <FeedPostCard
+      post={item}
+      onCommentPress={() => handleCommentPress(item.id)}
+      onRefresh={() => loadFeed(true)}
+    />
+  );
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={Colors.light.primary} />
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (loading) return null;
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>
+          {activeTab === 'local'
+            ? 'No posts in your parish yet. Be the first to share!'
+            : activeTab === 'archdiocese'
+              ? 'No archdiocese posts yet.'
+              : 'No national posts yet.'}
+        </Text>
+      </View>
+    );
+  };
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'junior_admin';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LocalChurchIdRequestModal
-        visible={isModalVisible}
-        onClose={() => setModalVisible(false)}
-      />
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>EpixChurch</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => setSearchVisible(!searchVisible)}
-          >
+          <Link href="/saved-posts" asChild>
+            <TouchableOpacity style={styles.headerButton}>
+              <Bookmark color={Colors.light.text} size={24} />
+            </TouchableOpacity>
+          </Link>
+          <TouchableOpacity style={styles.headerButton}>
             <Search color={Colors.light.text} size={24} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
@@ -211,26 +176,96 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {searchVisible && (
-        <View style={styles.searchContainer}>
-          <Search color={Colors.light.textSecondary} size={20} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search posts, songs, prayers..."
-            placeholderTextColor={Colors.light.textSecondary}
-          />
+      {/* Parish Banner */}
+      {activeTab === 'local' && parishName && (
+        <View style={styles.parishBanner}>
+          <Text style={styles.parishBannerText}>
+            📍 Viewing content from: {parishName}
+          </Text>
         </View>
       )}
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'local' && styles.tabActive]}
+          onPress={() => handleTabChange('local')}
+        >
+          <Text style={[styles.tabText, activeTab === 'local' && styles.tabTextActive]}>
+            Local Feed
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'archdiocese' && styles.tabActive]}
+          onPress={() => handleTabChange('archdiocese')}
+        >
+          <Text
+            style={[styles.tabText, activeTab === 'archdiocese' && styles.tabTextActive]}
+          >
+            Archdiocese
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'national' && styles.tabActive]}
+          onPress={() => handleTabChange('national')}
+        >
+          <Text style={[styles.tabText, activeTab === 'national' && styles.tabTextActive]}>
+            National
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Feed */}
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={Colors.light.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.feedContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.light.primary}
+            />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmpty}
+        />
+      )}
+
+      {/* Floating Create Button (Admin Only) */}
+      {isAdmin && (
+        <TouchableOpacity style={styles.fab}>
+          <Plus size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* Comments Modal */}
+      <Modal
+        visible={showComments}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseComments}
       >
-        {mockFeedItems.map((item) => (
-          <FeedCard key={item.id} item={item} />
-        ))}
-      </ScrollView>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Comments</Text>
+            <TouchableOpacity onPress={handleCloseComments}>
+              <Text style={styles.modalClose}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          {selectedPostId && (
+            <FeedCommentSection postId={selectedPostId} onClose={handleCloseComments} />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -273,121 +308,103 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: Colors.light.error,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surfaceSecondary,
+  parishBanner: {
+    backgroundColor: Colors.light.primaryLight,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
-  searchIcon: {
-    position: 'absolute',
-    left: 24,
-    zIndex: 1,
+  parishBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.light.primary,
+    textAlign: 'center',
   },
-  searchInput: {
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.light.surfaceSecondary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  tab: {
     flex: 1,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 20,
-    paddingHorizontal: 40,
-    paddingVertical: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: Colors.light.primary,
+  },
+  tabText: {
     fontSize: 15,
-    color: Colors.light.text,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
   },
-  scrollView: {
+  tabTextActive: {
+    color: Colors.light.primary,
+  },
+  loaderContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  scrollContent: {
+  feedContent: {
     paddingVertical: 8,
   },
-  card: {
-    backgroundColor: Colors.light.card,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: Colors.light.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
+  footerLoader: {
+    paddingVertical: 20,
     alignItems: 'center',
-    marginBottom: 12,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  emptyContainer: {
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.light.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.light.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalContainer: {
+    flex: 1,
     backgroundColor: Colors.light.surface,
   },
-  cardHeaderText: {
-    flex: 1,
-    marginLeft: 12,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
-  authorName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
-  timestamp: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    marginTop: 2,
-  },
-  pinnedBadge: {
-    backgroundColor: Colors.light.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  pinnedText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.light.surfaceSecondary,
-  },
-  cardTitle: {
+  modalTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.light.text,
-    marginBottom: 8,
   },
-  cardContent: {
-    fontSize: 15,
-    color: Colors.light.textSecondary,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  cardImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    backgroundColor: Colors.light.surface,
-    marginBottom: 12,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.borderLight,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  actionText: {
-    fontSize: 14,
+  modalClose: {
+    fontSize: 16,
     fontWeight: '600',
-    color: Colors.light.textSecondary,
-  },
-  actionTextActive: {
-    color: Colors.light.error,
+    color: Colors.light.primary,
   },
 });

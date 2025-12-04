@@ -8,6 +8,7 @@ export default function JuniorAdminLayout() {
       <Stack.Screen name="upload-readings" />
       <Stack.Screen name="upload-hymns" />
       <Stack.Screen name="upload-songs" />
+      <Stack.Screen name="create-session" />
     </Stack>
   );
 }

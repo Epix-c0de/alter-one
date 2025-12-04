@@ -1,3 +1,4 @@
+
 import { Link } from 'expo-router';
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
@@ -34,6 +35,26 @@ const AdminDashboard = () => {
           <Link href="/(admin)/manage-parishes" asChild>
             <TouchableOpacity style={styles.menuItem}>
               <Text style={styles.menuItemText}>Manage Parishes</Text>
+              <ChevronRight color={Colors.light.textTertiary} size={20} />
+            </TouchableOpacity>
+          </Link>
+
+          <Link href="/(admin)/create-feed-post" asChild>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemContent}>
+                <MapPin color={Colors.light.primary} size={22} />
+                <Text style={styles.menuItemText}>Create Feed Post</Text>
+              </View>
+              <ChevronRight color={Colors.light.textTertiary} size={20} />
+            </TouchableOpacity>
+          </Link>
+
+          <Link href="/(admin)/moderation" asChild>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemContent}>
+                <MapPin color={Colors.light.primary} size={22} />
+                <Text style={styles.menuItemText}>Content Moderation</Text>
+              </View>
               <ChevronRight color={Colors.light.textTertiary} size={20} />
             </TouchableOpacity>
           </Link>

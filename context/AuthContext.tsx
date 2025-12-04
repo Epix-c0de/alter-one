@@ -7,9 +7,17 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isGuest: boolean;
+  promptSignUp: (context: string) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, session: null, loading: true });
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  loading: true,
+  isGuest: true,
+  promptSignUp: () => { },
+});
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -43,8 +51,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  const isGuest = !session;
+
+  const promptSignUp = (context: string) => {
+    // This will be used by components to trigger sign-up prompts
+    console.log(`Sign-up prompt triggered for context: ${context}`);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading }}>
+    <AuthContext.Provider value={{ user, session, loading, isGuest, promptSignUp }}>
       {children}
     </AuthContext.Provider>
   );

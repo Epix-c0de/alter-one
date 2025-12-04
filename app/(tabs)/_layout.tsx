@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, BookOpen, Heart, Music, Users, User, Bible } from 'lucide-react-native';
+import { Home, BookOpen, Heart, Music, Users, User } from 'lucide-react-native';
 import React from 'react';
 
 import Colors from '@/constants/colors';
@@ -37,10 +37,10 @@ export default function TabLayout() {
         name="readings"
         options={{
           title: 'Bible',
-          tabBarIcon: ({ color, size }) => <Bible color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} />,
         }}
       />
-       <Tabs.Screen
+      <Tabs.Screen
         name="mass-responses"
         options={{
           title: 'Mass',

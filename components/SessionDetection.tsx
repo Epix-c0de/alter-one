@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { findNearbySession } from '@/lib/geofencing';
 import Colors from '@/constants/colors';
 import { Database } from '@/types/database';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import SignUpPrompt from './SignUpPrompt';
+import { shouldShowPrompt, recordPromptShown } from '@/lib/auth-prompt';
 
 type Session = Database['public']['Tables']['sessions']['Row'];
 
@@ -12,6 +16,9 @@ const SessionDetection = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [detectedSession, setDetectedSession] = useState<Session | null>(null);
     const [parishName, setParishName] = useState<string>('');
+    const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+    const router = useRouter();
+    const { user, isGuest } = useAuth();
 
     useEffect(() => {
         let subscription: Location.LocationSubscription | null = null;
@@ -77,51 +84,83 @@ const SessionDetection = () => {
         }
     };
 
-    const handleConnect = () => {
+    const handleConnect = async () => {
         if (!detectedSession) return;
 
-        // Logic to connect to session
-        // This might involve setting global state, context, or navigating to a specific screen.
-        // For now, we'll just show an alert and close the modal.
-        Alert.alert('Connected', `You have joined the session at ${parishName}`);
-        setModalVisible(false);
+        // Check if user is authenticated
+        if (isGuest) {
+            const canShow = await shouldShowPrompt('session');
+            if (canShow) {
+                setModalVisible(false);
+                setShowAuthPrompt(true);
+            }
+            return;
+        }
 
-        // TODO: Save session ID to global store/context
+        setModalVisible(false);
+        // Navigate to the session page
+        router.push(`/session/${detectedSession.id}` as any);
+    };
+
+    const handleSignUp = () => {
+        setShowAuthPrompt(false);
+        recordPromptShown('signup');
+        router.push('/(tabs)/profile' as any);
+    };
+
+    const handleDismissPrompt = () => {
+        setShowAuthPrompt(false);
+        recordPromptShown('later');
+    };
+
+    const handleIgnorePrompt = () => {
+        setShowAuthPrompt(false);
+        recordPromptShown('ignore');
     };
 
     return (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={() => setModalVisible(false)}
-        >
-            <View style={styles.centeredView}>
-                <View style={styles.modalView}>
-                    <Text style={styles.modalTitle}>New Session Detected!</Text>
-                    <Text style={styles.modalText}>
-                        A session is active in your area.
-                    </Text>
-                    <Text style={styles.parishName}>Parish: {parishName}</Text>
+        <>
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.centeredView}>
+                    <View style={styles.modalView}>
+                        <Text style={styles.modalTitle}>New Session Detected!</Text>
+                        <Text style={styles.modalText}>
+                            A session is active in your area.
+                        </Text>
+                        <Text style={styles.parishName}>Parish: {parishName}</Text>
 
-                    <Text style={styles.question}>Would you like to connect?</Text>
+                        <Text style={styles.question}>Would you like to connect?</Text>
 
-                    <TouchableOpacity
-                        style={[styles.button, styles.buttonConnect]}
-                        onPress={handleConnect}
-                    >
-                        <Text style={styles.textStyle}>Connect Automatically</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.button, styles.buttonConnect]}
+                            onPress={handleConnect}
+                        >
+                            <Text style={styles.textStyle}>Connect Automatically</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.button, styles.buttonClose]}
-                        onPress={() => setModalVisible(false)}
-                    >
-                        <Text style={styles.textStyleCancel}>No, thanks</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.button, styles.buttonClose]}
+                            onPress={() => setModalVisible(false)}
+                        >
+                            <Text style={styles.textStyleCancel}>No, thanks</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </Modal>
+            </Modal>
+
+            <SignUpPrompt
+                visible={showAuthPrompt}
+                onDismiss={handleDismissPrompt}
+                onSignUp={handleSignUp}
+                onIgnore={handleIgnorePrompt}
+                context="session"
+            />
+        </>
     );
 };
 

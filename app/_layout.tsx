@@ -6,9 +6,9 @@ import CustomSplashScreen from '@/components/SplashScreen';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { LocationProvider } from '@/context/LocationContext';
 
-const queryClient = new QueryClient();
-
 import SessionDetection from '@/components/SessionDetection';
+
+const queryClient = new QueryClient();
 
 const InitialLayout = () => {
   const { session, loading, user } = useAuth();
@@ -20,19 +20,23 @@ const InitialLayout = () => {
 
     const inTabsGroup = segments[0] === '(tabs)';
     const inAdminGroup = segments[0] === '(admin)';
+    const inJuniorAdminGroup = segments[0] === '(junior-admin)';
+    const inAuthGroup = segments[0] === '(auth)';
 
-    // This is a simplified role check. In production, you'd have more robust logic.
-    const isAdmin = user?.role === 'admin';
+    // Role-based checks
+    const isMasterAdmin = user?.role === 'admin';
+    const isJuniorAdmin = user?.role === 'junior_admin';
 
-    if (session && !inTabsGroup && !inAdminGroup) {
-      if (isAdmin) {
-        router.replace('/(admin)/manage-archdiocese');
-      } else {
-        router.replace('/(tabs)/home');
-      }
-    } else if (!session) {
-      router.replace('/(auth)/login');
+    // If user is authenticated and is an admin, redirect to appropriate admin dashboard
+    if (session && isMasterAdmin && !inAdminGroup) {
+      router.replace('/(admin)');
+    } else if (session && isJuniorAdmin && !inJuniorAdminGroup) {
+      router.replace('/(junior-admin)');
+    } else if (session && !isMasterAdmin && !isJuniorAdmin && !inTabsGroup && !inAuthGroup) {
+      // Regular authenticated user - go to tabs
+      router.replace('/(tabs)/home');
     }
+    // Guest users (no session) can stay wherever they are - no forced redirect to login
   }, [session, loading, segments, router, user]);
 
   return (
@@ -41,6 +45,7 @@ const InitialLayout = () => {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(admin)" />
+        <Stack.Screen name="(junior-admin)" />
         <Stack.Screen name="capture-song" options={{ presentation: 'modal' }} />
         <Stack.Screen name="+not-found" options={{ headerShown: true, title: 'Not Found' }} />
       </Stack>

@@ -44,6 +44,16 @@ const JuniorAdminDashboard = () => {
             </TouchableOpacity>
           </Link>
 
+          <Link href="/(junior-admin)/create-feed-post" asChild>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemContent}>
+                <Upload color={Colors.light.primary} size={22} />
+                <Text style={styles.menuItemText}>Create Feed Post</Text>
+              </View>
+              <ChevronRight color={Colors.light.textTertiary} size={20} />
+            </TouchableOpacity>
+          </Link>
+
           <Link href="/(junior-admin)/create-session" asChild>
             <TouchableOpacity style={styles.menuItem}>
               <View style={styles.menuItemContent}>
