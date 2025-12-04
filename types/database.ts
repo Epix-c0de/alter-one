@@ -292,6 +292,110 @@ export interface Database {
         }
         Relationships: []
       }
+      session_content_mappings: {
+        Row: {
+          id: string
+          session_id: string
+          content_type: 'reading' | 'song' | 'prayer' | 'announcement'
+          content_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          content_type: 'reading' | 'song' | 'prayer' | 'announcement'
+          content_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          content_type?: 'reading' | 'song' | 'prayer' | 'announcement'
+          content_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_content_mappings_session_id_fkey"
+            columns: ["session_id"]
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sessions: {
+        Row: {
+          id: string
+          session_code: string
+          latitude: number
+          longitude: number
+          radius: number
+          parish_id: string
+          local_church_id: string
+          created_by: string
+          created_at: string
+          is_active: boolean
+          title: string | null
+          session_type: 'mass' | 'live' | 'meeting' | 'other' | null
+          start_time: string | null
+          end_time: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          session_code: string
+          latitude: number
+          longitude: number
+          radius?: number
+          parish_id: string
+          local_church_id: string
+          created_by: string
+          created_at?: string
+          is_active?: boolean
+          title?: string | null
+          session_type?: 'mass' | 'live' | 'meeting' | 'other' | null
+          start_time?: string | null
+          end_time?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          session_code?: string
+          latitude?: number
+          longitude?: number
+          radius?: number
+          parish_id?: string
+          local_church_id?: string
+          created_by?: string
+          created_at?: string
+          is_active?: boolean
+          title?: string | null
+          session_type?: 'mass' | 'live' | 'meeting' | 'other' | null
+          start_time?: string | null
+          end_time?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_parish_id_fkey"
+            columns: ["parish_id"]
+            referencedRelation: "parishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_local_church_id_fkey"
+            columns: ["local_church_id"]
+            referencedRelation: "local_churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       songs: {
         Row: {
           id: string

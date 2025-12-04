@@ -3,17 +3,27 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, MapPin } from 'lucide-react-native';
 
 const AdminDashboard = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Admin Dashboard</Text>
+          <Text style={styles.headerTitle}>Master Admin Dashboard</Text>
         </View>
 
         <View style={styles.menuContainer}>
+          <Link href="/(admin)/manage-sessions" asChild>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemContent}>
+                <MapPin color={Colors.light.primary} size={22} />
+                <Text style={styles.menuItemText}>Manage Active Sessions</Text>
+              </View>
+              <ChevronRight color={Colors.light.textTertiary} size={20} />
+            </TouchableOpacity>
+          </Link>
+
           <Link href="/(admin)/manage-archdiocese" asChild>
             <TouchableOpacity style={styles.menuItem}>
               <Text style={styles.menuItemText}>Manage Archdioceses</Text>
@@ -66,6 +76,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  menuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   menuItemText: {
     fontSize: 16,

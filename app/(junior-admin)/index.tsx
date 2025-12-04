@@ -33,12 +33,22 @@ const JuniorAdminDashboard = () => {
               <ChevronRight color={Colors.light.textTertiary} size={20} />
             </TouchableOpacity>
           </Link>
-          
+
           <Link href="/(junior-admin)/upload-songs" asChild>
             <TouchableOpacity style={styles.menuItem}>
               <View style={styles.menuItemContent}>
                 <Upload color={Colors.light.primary} size={22} />
                 <Text style={styles.menuItemText}>Upload Songs from YouTube</Text>
+              </View>
+              <ChevronRight color={Colors.light.textTertiary} size={20} />
+            </TouchableOpacity>
+          </Link>
+
+          <Link href="/(junior-admin)/create-session" asChild>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemContent}>
+                <BookOpen color={Colors.light.primary} size={22} />
+                <Text style={styles.menuItemText}>Generate Session ID</Text>
               </View>
               <ChevronRight color={Colors.light.textTertiary} size={20} />
             </TouchableOpacity>

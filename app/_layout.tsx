@@ -8,6 +8,8 @@ import { LocationProvider } from '@/context/LocationContext';
 
 const queryClient = new QueryClient();
 
+import SessionDetection from '@/components/SessionDetection';
+
 const InitialLayout = () => {
   const { session, loading, user } = useAuth();
   const segments = useSegments();
@@ -34,13 +36,16 @@ const InitialLayout = () => {
   }, [session, loading, segments, router, user]);
 
   return (
-    <Stack screenOptions={{ headerBackTitle: 'Back', headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(admin)" />
-      <Stack.Screen name="capture-song" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="+not-found" options={{ headerShown: true, title: 'Not Found' }} />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerBackTitle: 'Back', headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(admin)" />
+        <Stack.Screen name="capture-song" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="+not-found" options={{ headerShown: true, title: 'Not Found' }} />
+      </Stack>
+      <SessionDetection />
+    </>
   );
 };
 

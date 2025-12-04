@@ -8,6 +8,7 @@ export default function AdminLayout() {
       <Stack.Screen name="manage-archdiocese" />
       <Stack.Screen name="manage-parishes" />
       <Stack.Screen name="manage-local-churches" />
+      <Stack.Screen name="manage-sessions" />
     </Stack>
   );
 }
