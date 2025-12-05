@@ -5,8 +5,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import CustomSplashScreen from '@/components/SplashScreen';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { LocationProvider } from '@/context/LocationContext';
+// import { TailwindProvider } from 'tailwindcss-react-native';
+import "./index.css";
 
 import SessionDetection from '@/components/SessionDetection';
+import { SmartAppBar } from '@/components/navigation/SmartAppBar';
+import { SmartBottomBar } from '@/components/navigation/SmartBottomBar';
+import { ContextFAB } from '@/components/navigation/ContextFAB';
 
 const queryClient = new QueryClient();
 
@@ -41,6 +46,7 @@ const InitialLayout = () => {
 
   return (
     <>
+      <SmartAppBar />
       <Stack screenOptions={{ headerBackTitle: 'Back', headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
@@ -50,6 +56,8 @@ const InitialLayout = () => {
         <Stack.Screen name="+not-found" options={{ headerShown: true, title: 'Not Found' }} />
       </Stack>
       <SessionDetection />
+      <ContextFAB />
+      <SmartBottomBar />
     </>
   );
 };

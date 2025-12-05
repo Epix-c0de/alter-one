@@ -31,6 +31,314 @@ export interface Database {
         }
         Relationships: []
       }
+      feed_posts: {
+        Row: {
+          id: string
+          author_id: string
+          parish_id: string | null
+          content: string
+          tier: 'local' | 'archdiocese' | 'national'
+          post_type: 'text' | 'media' | 'event' | 'announcement'
+          event_date: string | null
+          is_pinned: boolean
+          like_count: number
+          comment_count: number
+          share_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          author_id: string
+          parish_id?: string | null
+          content: string
+          tier: 'local' | 'archdiocese' | 'national'
+          post_type: 'text' | 'media' | 'event' | 'announcement'
+          event_date?: string | null
+          is_pinned?: boolean
+          like_count?: number
+          comment_count?: number
+          share_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          author_id?: string
+          parish_id?: string | null
+          content?: string
+          tier?: 'local' | 'archdiocese' | 'national'
+          post_type?: 'text' | 'media' | 'event' | 'announcement'
+          event_date?: string | null
+          is_pinned?: boolean
+          like_count?: number
+          comment_count?: number
+          share_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_posts_author_id_fkey"
+            columns: ["author_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_posts_parish_id_fkey"
+            columns: ["parish_id"]
+            referencedRelation: "parishes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_media: {
+        Row: {
+          id: string
+          post_id: string
+          media_type: 'image' | 'video'
+          media_url: string
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          media_type: 'image' | 'video'
+          media_url: string
+          display_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          media_type?: 'image' | 'video'
+          media_url?: string
+          display_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_media_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_likes: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_likes_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_likes_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_comments: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          content: string
+          like_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          content: string
+          like_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          content?: string
+          like_count?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_comments_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_comments_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_comment_likes: {
+        Row: {
+          id: string
+          comment_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            referencedRelation: "feed_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_shares: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_shares_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_shares_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_saves: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_saves_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_saves_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feed_reports: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          reason: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          reason: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          reason?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_reports_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_reports_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       hymns: {
         Row: {
           id: string

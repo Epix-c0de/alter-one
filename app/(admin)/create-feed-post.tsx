@@ -9,11 +9,12 @@ import {
     Alert,
     ActivityIndicator,
     Platform,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Image, Video, Calendar, X, ChevronDown } from 'lucide-react-native';
+import { Image as ImageIcon, Video, Calendar, X, ChevronDown } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -148,6 +149,10 @@ export default function AdminCreateFeedPost() {
 
             if (userError || !userData) {
                 throw new Error('Failed to get user data');
+            }
+
+            if (!userData.parish_id || !userData.archdiocese_id) {
+                throw new Error('User must belong to a parish and archdiocese');
             }
 
             const { data: post, error: postError } = await createPost(
@@ -389,7 +394,7 @@ export default function AdminCreateFeedPost() {
                     <Text style={styles.sectionTitle}>Add Media</Text>
                     <View style={styles.mediaButtons}>
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImages}>
-                            <Image size={24} color={Colors.light.primary} />
+                            <ImageIcon size={24} color={Colors.light.primary} />
                             <Text style={styles.mediaButtonText}>Photos</Text>
                             <Text style={styles.mediaButtonSubtext}>Up to 10</Text>
                         </TouchableOpacity>
